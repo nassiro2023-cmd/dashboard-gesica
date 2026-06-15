@@ -428,7 +428,7 @@ with tabs[1]:
     """)
     
     # Chargement des résultats SIR
-    df_sir, err_sir = load_csv("/Users/bardine/Desktop/M1/stage/mon_dashboard/resultats_sir.csv")
+    df_sir, err_sir = load_csv("resultats_sir.csv")
     
     # Paramètres SIR (issus de ta calibration)
     alpha_sir = 0.4567
