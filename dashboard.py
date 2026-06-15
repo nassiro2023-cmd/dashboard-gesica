@@ -168,9 +168,14 @@ def niveau_alerte(val):
 # =============================================================================
 # CHARGEMENT DES DONNÉES
 # =============================================================================
-df_res, err_res = load_csv("resultats_sirs_.csv")
-df_raw, err_raw = load_csv("covid-19-passages-aux-urgences-et-actes-sos-medecins-departement-2.csv")
+# ============================================
+# CHARGEMENT DES DONNÉES
+# ============================================
+with st.spinner(" Chargement des données SIRS..."):
+    df_res, err_res = load_csv("resultats_sirs_.csv")
 
+with st.spinner(" Chargement des données COVID brutes..."):
+    df_raw, err_raw = load_csv("covid-19-passages-aux-urgences-et-actes-sos-medecins-departement-2.csv")
 COL_I = find_col(df_res, ['I_taux_estime_infectes', 'I_estime', 'I_taux'])
 COL_OBS = find_col(df_res, ['taux_observe', 'taux_obs', 'taux'])
 COL_SIM = find_col(df_res, ['taux_simule', 'taux_sim'])
@@ -279,6 +284,39 @@ with st.sidebar:
     capacite = st.slider(" Capacité (lits / 100k)", 10000, 100000, 50000, 5000)
     facteur = st.slider(" Facteur crise (×)", 0.5, 10.0, 1.0, 0.5)
 
+
+
+
+    # ============================================
+    # AJOUTER ICI (après facteur, avant le ---)
+    # ============================================
+    st.markdown("---")
+    st.markdown("###  Filtre temporel")
+    
+    if df_res is not None and 'date' in df_res.columns:
+        date_min = df_res['date'].min().date()
+        date_max = df_res['date'].max().date()
+        date_range = st.date_input(
+            "Période d'affichage",
+            value=[date_min, date_max],
+            min_value=date_min,
+            max_value=date_max
+            )
+        if len(date_range) == 2:
+            st.session_state['date_debut'] = pd.to_datetime(date_range[0])
+            st.session_state['date_fin'] = pd.to_datetime(date_range[1])
+
+
+
+
+
+
+
+
+
+
+
+
     st.markdown("---")
     st.markdown("###  Paramètres SIRS")
     st.dataframe(
@@ -290,7 +328,29 @@ with st.sidebar:
                                f"{1/GAMMA:.1f} sem.", f"{1/DELTA:.0f} sem.", "reproduction"]
         }), hide_index=True, use_container_width=True
     )
-
+    
+    
+    
+    
+    # ============================================
+    # AJOUTER ICI (après le tableau des paramètres)
+    # ============================================
+    with st.expander(" Que signifient ces paramètres ?"):
+        st.markdown("""
+        | Paramètre | Signification | Valeur |
+        |-----------|---------------|--------|
+        | **α** | Taux de couplage (infectés comptabilisés) | 45.0% |
+        | **β₀** | Taux de transmission moyen | 2.03 /semaine |
+        | **β₁** | Amplitude de la saisonnalité | -0.47 |
+        | **γ** | Taux de guérison → durée maladie | 2.6 sem. |
+        | **δ** | Taux de perte d'immunité → durée immunité | 83 sem. |
+        | **R₀** | Taux de reproduction | 5.30 |
+        """)
+        
+        
+        
+        
+        
     st.markdown("---")
     st.markdown("###  Validation")
     st.metric("R² Train", f"{R2_TRAIN:.4f}")
@@ -322,7 +382,8 @@ tabs = st.tabs([
     " Seuils d'alerte",
     " What if",
     " Bootstrap",
-    " Données brutes"
+    " Données brutes",
+    " À propos"
 ])
 
 # =============================================================================
@@ -350,12 +411,54 @@ with tabs[0]:
         d2.metric(" Taux simulé", f"{last_sim:.0f}", "/ 100k")
         d3.metric(" I(t) estimé", f"{last_I:.0f}", "/ 100k")
        
+        
+       
+        
+       
+        # ============================================
+        # AJOUTER ICI (juste après les métriques)
+        # ============================================
+        st.markdown("### Niveau de risque actuel")
+        risque_actuel = 1 - stats.lognorm.cdf(I_cur, s=SIGMA, scale=np.exp(MU))
+
+        # Jauge de progression
+        st.progress(min(1.0, risque_actuel * 10))
+
+        # Couleur selon le niveau de risque
+        if risque_actuel < 0.01:
+            st.success(f" Risque très faible : {risque_actuel:.2%}")
+        elif risque_actuel < 0.05:
+            st.info(f" Risque faible : {risque_actuel:.2%}")
+        elif risque_actuel < 0.10:
+            st.warning(f" Risque modéré : {risque_actuel:.2%}")
+        else:
+            st.error(f" Risque élevé : {risque_actuel:.2%}")
+        
+       
+        
+       
+        
+       
+        
+       
+        
+       
+        
+       
+        
+       
+        
+       
+        
+       
+        
+       
 
         st.markdown("---")
         c1, c2 = st.columns(2)
 
         with c1:
-            st.markdown("**Calibration : Observé vs Simulé**")
+            st.markdown("Calibration : Observé vs Simulé")
             fig, ax = dark_fig(figsize=(7, 4))
             ax.plot(df_res['date'], df_res[COL_OBS], 'o', color=C[0], ms=2, alpha=0.6, label='Observé')
             ax.plot(df_res['date'], df_res[COL_SIM], '-', color=C[1], lw=2, label=f'Simulé SIRS (R²={R2_TEST:.3f})')
@@ -369,7 +472,7 @@ with tabs[0]:
             plt.close()
 
         with c2:
-            st.markdown("**I(t) — Infectés latents avec IC 95%**")
+            st.markdown("I(t) — Infectés latents avec IC 95%")
             fig, ax = dark_fig(figsize=(7, 4))
             ax.plot(df_res['date'], df_res[COL_I], '-', color='#f4a261', lw=2, label='I(t) estimé')
             if COL_ICLO and COL_ICHI:
@@ -524,43 +627,6 @@ with tabs[1]:
     pour représenter la dynamique réelle de l'épidémie sur une période longue (2020-2025) avec plusieurs vagues successives.
     C'est pourquoi nous utilisons le SIRS pour la suite des analyses.
     """)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1230,6 +1296,54 @@ with tabs[9]:
             f"gesica_{ds_choice.lower().replace(' ', '_')}.csv",
             "text/csv"
         )
+        
+        
+# =============================================================================
+# TAB 10 : À PROPOS
+# =============================================================================
+with tabs[10]:
+    st.markdown('<div class="sec-title">ℹ️ À propos</div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    ### Dashboard Gesica / Interreg
+    
+    **Auteur** : Nassir Ousmane — M1 Ingénierie de la Santé
+    
+    **Laboratoire** : SINeRGIE Besançon
+    
+    **Période** : 2020-2025
+    
+    **Données** : OScour (passages aux urgences pour COVID-19)
+    
+    **Modèle** : SIRS calibré sur la Franche-Comté
+    
+    ---
+    
+    ### Validation du modèle
+    
+    | Métrique | Valeur |
+    |----------|--------|
+    | R² (entraînement) | 0.5906 |
+    | R² (test) | 0.7018 |
+    | RMSE | 1 956 |
+    | MAE | 1 189 |
+    | Bootstrap | 50 échantillons |
+    
+    ---
+    
+    ### Loi Log-Normale de I(t)
+    
+    - **μ** = 7.3189
+    - **σ** = 1.4358
+    - **p-value KS** = 0.605 → loi acceptée
+    
+    ---
+    
+    ### Liens
+    
+    - [Code source sur GitHub](https://github.com/nassiro2023-cmd/dashboard-gesica)
+    - [Projet Gesica](https://www.interreg-francesuisse.eu/projets/gesica)
+    """)
 
 # =============================================================================
 # FOOTER
