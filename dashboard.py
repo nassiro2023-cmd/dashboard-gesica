@@ -415,24 +415,29 @@ with tabs[0]:
        
         
        
+       
         # ============================================
-        # AJOUTER ICI (juste après les métriques)
+        # REMPLACER PAR
         # ============================================
-        st.markdown("### Niveau de risque actuel")
-        risque_actuel = 1 - stats.lognorm.cdf(I_cur, s=SIGMA, scale=np.exp(MU))
+        st.markdown("### Situation actuelle")
+        col1, col2 = st.columns(2)
 
-        # Jauge de progression
-        st.progress(min(1.0, risque_actuel * 10))
+        with col1:
+            st.markdown(f"""
+            <div style="background: rgba(17,34,64,0.8); border-radius: 10px; padding: 0.8rem; text-align: center;">
+                <span style="font-size: 0.8rem; color: #8892b0;">NIVEAU D'ALERTE</span><br>
+                <span style="font-size: 1.6rem; font-weight: 800; color: {niv_col};">{niv_txt}</span>
+        </div>
+        """, unsafe_allow_html=True)
 
-        # Couleur selon le niveau de risque
-        if risque_actuel < 0.01:
-            st.success(f" Risque très faible : {risque_actuel:.2%}")
-        elif risque_actuel < 0.05:
-            st.info(f" Risque faible : {risque_actuel:.2%}")
-        elif risque_actuel < 0.10:
-            st.warning(f" Risque modéré : {risque_actuel:.2%}")
-        else:
-            st.error(f" Risque élevé : {risque_actuel:.2%}")
+        with col2:
+            st.markdown(f"""
+            <div style="background: rgba(17,34,64,0.8); border-radius: 10px; padding: 0.8rem; text-align: center;">
+                <span style="font-size: 0.8rem; color: #8892b0;">I(t) ACTUEL</span><br>
+                <span style="font-size: 1.6rem; font-weight: 800; color: #00c9a7;">{I_cur:.0f}</span>
+                <span style="font-size: 0.8rem; color: #8892b0;"> / 100k hab</span>
+            </div>
+            """, unsafe_allow_html=True)
         
        
         
