@@ -349,7 +349,7 @@ with tabs[0]:
         d1.metric(" Taux observé", f"{last_obs:.0f}", "/ 100k")
         d2.metric(" Taux simulé", f"{last_sim:.0f}", "/ 100k")
         d3.metric(" I(t) estimé", f"{last_I:.0f}", "/ 100k")
-        d4.metric(" Écart absolu", f"{abs(last_obs - last_sim):.0f}", "/ 100k")
+       
 
         st.markdown("---")
         c1, c2 = st.columns(2)
