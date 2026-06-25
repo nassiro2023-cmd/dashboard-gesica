@@ -282,7 +282,8 @@ with st.sidebar:
     st.markdown("##  Paramètres dynamiques")
     st.markdown("---")
 
-    capacite = st.slider(" Capacité (lits / 100k)", 10000, 100000, 50000, 5000)
+    #capacite = st.slider(" Capacité (lits / 100k)", 10000, 100000, 50000, 5000)
+    seuil = st.slider(" Seuil critique (I(t) / 100k)", 10000, 100000, 50000, 5000)
     facteur = st.slider(" Facteur crise (×)", 0.5, 10.0, 1.0, 0.5)
 
 
@@ -816,7 +817,7 @@ with tabs[3]:
 # TAB 4 : PROBABILITÉS DE DÉPASSEMENT (NOUVEAU)
 # =============================================================================
 with tabs[4]:
-    st.markdown('<div class="sec-title">📊 Probabilités de dépassement d\'un seuil</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec-title"> Probabilités de dépassement d\'un seuil</div>', unsafe_allow_html=True)
 
     st.markdown(f"""
     À partir de la loi Log-Normale identifiée pour \(I(t)\) :
@@ -922,7 +923,7 @@ with tabs[5]:
         <div style="background:rgba(17,34,64,.8); border:1px solid {niv_col}55;
                     border-radius:8px; padding:.8rem; margin-top:.8rem; text-align:center;">
             <span style="font-size:1.1rem; color:{niv_col}; font-weight:700;">
-                 📍 Situation actuelle : I(t) = {I_cur:.0f} → {niv_txt}
+                  Situation actuelle : I(t) = {I_cur:.0f} → {niv_txt}
             </span>
         </div>""", unsafe_allow_html=True)
 
@@ -930,7 +931,7 @@ with tabs[5]:
 # TAB 6 : SAISON & MÉTÉO (NOUVEAU)
 # =============================================================================
 with tabs[6]:
-    st.markdown('<div class="sec-title">🌍 Saisonnalité et météo</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec-title"> Saisonnalité et météo</div>', unsafe_allow_html=True)
     
     st.markdown("""
     ### Saisonnalité du risque
@@ -959,16 +960,16 @@ with tabs[6]:
 # TAB 7 : SIMULATIONS
 # =============================================================================
 with tabs[7]:
-    st.markdown('<div class="sec-title">🎯 Simulations — Scénarios</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec-title"> Simulations — Scénarios</div>', unsafe_allow_html=True)
 
-    r_ref = risque_dynamique(capacite, 1.0)
+    r_ref = risque_dynamique(seuil, 1.0)
 
     whatif_scenarios = [
         (" Situation actuelle", r_ref, "#457b9d"),
-        (" Renforcement capacité (+20%)", risque_dynamique(capacite * 1.2, 1.0), "#2a9d8f"),
-        (" Mesures barrières (-30% I)", risque_dynamique(capacite, 0.7), "#00c9a7"),
-        (" Nouveau variant (×2)", risque_dynamique(capacite, 2.0), "#f4a261"),
-        (" Pire scénario (×4)", risque_dynamique(capacite, 4.0), "#e63946"),
+        (" Renforcement capacité (+20%)", risque_dynamique(seuil * 1.2, 1.0), "#2a9d8f"),
+        (" Mesures barrières (-30% I)", risque_dynamique(seuil, 0.7), "#00c9a7"),
+        (" Nouveau variant (×2)", risque_dynamique(seuil, 2.0), "#f4a261"),
+        (" Pire scénario (×4)", risque_dynamique(seuil, 4.0), "#e63946"),
     ]
 
     wif_df = pd.DataFrame({
@@ -987,7 +988,7 @@ with tabs[7]:
                 f"{w[1]:.1%}", va='center', fontsize=9)
     ax.axvline(r_ref, color='white', ls='--', lw=1.5, alpha=0.5, label='Référence')
     ax.set_xlabel("Probabilité de saturation")
-    ax.set_title(f"What If (capacité = {capacite:,})", fontsize=10)
+    ax.set_title(f"What If (capacité = {seuil:,})", fontsize=10)
     ax.legend(fontsize=8)
     ax.grid(True, axis='x')
     plt.tight_layout()
