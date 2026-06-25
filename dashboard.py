@@ -1,3 +1,4 @@
+
 """
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║         GESICA — ANALYSE COVID-19 FRANCHE-COMTÉ                             ║
@@ -369,24 +370,24 @@ def risque_dynamique(capacite, facteur=1.0):
     I_scale = np.exp(MU) * facteur
     return 1 - stats.lognorm.cdf(capacite, s=SIGMA, scale=I_scale)
 
+
+
 # =============================================================================
-# ONGLETS (sans Météo)
+# ONGLETS (VERSION FINALE - SANS VaR, SANS MONTE CARLO)
 # =============================================================================
 tabs = st.tabs([
     " I(t) & Modèle",
     " Modèle SIR", 
     " Validation",
     " Distribution",
-    " VaR & Monte Carlo",
-    " Stress Test",
-    " Seuils d'alerte",
-    " What if",
+    " Probabilités",          # ← NOUVEAU (remplace VaR & Monte Carlo)
+    " Seuils d'alerte",       # ← Simplifié
+    " Saison & Météo",        # ← Nouveau (fusion)
+    " Simulations",           # ← What if simplifié
     " Bootstrap",
     " Données brutes",
     " À propos"
 ])
-
-
 
 
 
@@ -812,73 +813,10 @@ with tabs[3]:
         st.markdown(f"- **Intervalle de confiance 95% :** [{np.exp(MU - 1.96*SIGMA):.0f} — {np.exp(MU + 1.96*SIGMA):.0f}]")
 
 # =============================================================================
-# TAB 4 : VaR & Monte Carlo
+# TAB 4 : PROBABILITÉS DE DÉPASSEMENT (NOUVEAU)
 # =============================================================================
 with tabs[4]:
-    st.markdown('<div class="sec-title"> Value at Risk Sanitaire & Monte Carlo</div>', unsafe_allow_html=True)
-
-    c1, c2 = st.columns(2)
-
-    with c1:
-        st.markdown("Value at Risk (VaR) sanitaire")
-        confs = [0.50, 0.75, 0.90, 0.95, 0.99, 0.999]
-        var_df = pd.DataFrame({
-            "Confiance": [f"{c*100:.1f}%" for c in confs],
-            "VaR I(t)": [f"{stats.lognorm.ppf(c, s=SIGMA, scale=np.exp(MU) * facteur):.0f}" for c in confs],
-            "Risque résiduel": [f"{(1-c)*100:.1f}%" for c in confs],
-            "Usage": ["Courant", "Standard", "Pré-alerte", "Alerte", "Crise", "Catastrophe"]
-        })
-        st.dataframe(var_df, hide_index=True, use_container_width=True)
-
-        fig, ax = dark_fig(figsize=(7, 4))
-        cr = np.linspace(0.5, 0.999, 200)
-        vv = [stats.lognorm.ppf(c, s=SIGMA, scale=np.exp(MU) * facteur) for c in cr]
-        ax.plot(cr, vv, '-', color='#00c9a7', lw=2)
-        ax.fill_between(cr, vv, alpha=0.15, color='#00c9a7')
-        for c_, clr_ in [(0.90, '#2a9d8f'), (0.95, '#f4a261'), (0.99, '#e63946')]:
-            v_ = stats.lognorm.ppf(c_, s=SIGMA, scale=np.exp(MU) * facteur)
-            ax.axvline(c_, color=clr_, ls='--', lw=1, alpha=0.7)
-            ax.axhline(v_, color=clr_, ls='--', lw=1, alpha=0.7)
-        ax.set_xlabel("Niveau de confiance")
-        ax.set_ylabel("VaR — Seuil I(t)")
-        ax.set_title(f"Courbe VaR Sanitaire (facteur ×{facteur})", fontsize=10)
-        ax.grid(True)
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
-
-    with c2:
-        st.markdown(f"Monte Carlo — 50 000 scénarios (facteur ×{facteur})")
-        np.random.seed(42)
-        I_mc = stats.lognorm.rvs(s=SIGMA, scale=np.exp(MU) * facteur, size=50000)
-        caps = [20000, 30000, 40000, 50000, 60000, 70000]
-        risqs = [np.mean(I_mc > c) for c in caps]
-
-        mc_df = pd.DataFrame({
-            "Capacité": [f"{c:,}" for c in caps],
-            "P(saturation)": [f"{r:.2%}" for r in risqs],
-            "Verdict": ["🔴 Critique" if r > 0.20 else "🟠 Attention" if r > 0.10 else "🟢 OK" for r in risqs]
-        })
-        st.dataframe(mc_df, hide_index=True, use_container_width=True)
-
-        fig, ax = dark_fig(figsize=(7, 4))
-        ax.hist(I_mc, bins=80, density=True, alpha=0.55, color='#457b9d', edgecolor='none')
-        ax.axvline(capacite, color='#e63946', ls='--', lw=2, label=f"Capacité choisie ({capacite:,})")
-        risk_cap = np.mean(I_mc > capacite)
-        ax.set_xlabel("I(t) simulé")
-        ax.set_ylabel("Densité")
-        ax.set_title(f"MC — Risque saturation = {risk_cap:.1%} (facteur ×{facteur})", fontsize=10)
-        ax.legend()
-        ax.grid(True)
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
-
-# =============================================================================
-# TAB 5 : PROBABILITÉS DE DÉPASSEMENT (NOUVEAU)
-# =============================================================================
-with tabs[4]:
-    st.markdown('<div class="sec-title"> Probabilités de dépassement d\'un seuil</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec-title">📊 Probabilités de dépassement d\'un seuil</div>', unsafe_allow_html=True)
 
     st.markdown(f"""
     À partir de la loi Log-Normale identifiée pour \(I(t)\) :
@@ -935,13 +873,14 @@ with tabs[4]:
     plt.close()
 
     st.info("""
-     Interprétation : 
+    🔍 **Interprétation** : 
     - La probabilité que I(t) dépasse 30 000 est de 1,7% (1 semaine sur 60).
     - La probabilité que I(t) dépasse 16 004 est de 5% (1 semaine sur 20).
     - Ces calculs sont directement issus de la distribution Log-Normale calibrée sur les données.
-    """) 
+    """)
+
 # =============================================================================
-# TAB 6 : SEUILS D'ALERTE (SIMPLIFIÉ)
+# TAB 5 : SEUILS D'ALERTE (SIMPLIFIÉ)
 # =============================================================================
 with tabs[5]:
     st.markdown('<div class="sec-title">🚦 Seuils d\'alerte opérationnels</div>', unsafe_allow_html=True)
@@ -983,22 +922,51 @@ with tabs[5]:
         <div style="background:rgba(17,34,64,.8); border:1px solid {niv_col}55;
                     border-radius:8px; padding:.8rem; margin-top:.8rem; text-align:center;">
             <span style="font-size:1.1rem; color:{niv_col}; font-weight:700;">
-                  Situation actuelle : I(t) = {I_cur:.0f} → {niv_txt}
+                 📍 Situation actuelle : I(t) = {I_cur:.0f} → {niv_txt}
             </span>
         </div>""", unsafe_allow_html=True)
 
 # =============================================================================
-# TAB 7 : What if (sans Météo)
+# TAB 6 : SAISON & MÉTÉO (NOUVEAU)
+# =============================================================================
+with tabs[6]:
+    st.markdown('<div class="sec-title">🌍 Saisonnalité et météo</div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    ### Saisonnalité du risque
+    
+    L'hiver est **51 fois plus risqué** que l'été.
+    
+    | Saison | Probabilité de dépasser 30 000 |
+    |--------|-------------------------------|
+    | Hiver | 4,11% |
+    | Printemps | 1,99% |
+    | Été | 0,08% |
+    | Automne | 0,65% |
+    
+    ### Météo
+    
+    | Variable | Corrélation avec I(t) |
+    |----------|----------------------|
+    | Température (0 semaine) | -0,197 |
+    | Température (4 semaines) | -0,222 |
+    | Précipitations | -0,117 |
+    
+    La météo n'explique qu'environ 7% de la variance de I(t).
+    """)
+
+# =============================================================================
+# TAB 7 : SIMULATIONS
 # =============================================================================
 with tabs[7]:
-    st.markdown('<div class="sec-title"> Scénarios What If</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec-title">🎯 Simulations — Scénarios</div>', unsafe_allow_html=True)
 
     r_ref = risque_dynamique(capacite, 1.0)
 
     whatif_scenarios = [
         (" Situation actuelle", r_ref, "#457b9d"),
         (" Renforcement capacité (+20%)", risque_dynamique(capacite * 1.2, 1.0), "#2a9d8f"),
-        (" Mesures réduction I(t) (-30%)", risque_dynamique(capacite, 0.7), "#00c9a7"),
+        (" Mesures barrières (-30% I)", risque_dynamique(capacite, 0.7), "#00c9a7"),
         (" Nouveau variant (×2)", risque_dynamique(capacite, 2.0), "#f4a261"),
         (" Pire scénario (×4)", risque_dynamique(capacite, 4.0), "#e63946"),
     ]
@@ -1025,8 +993,6 @@ with tabs[7]:
     plt.tight_layout()
     st.pyplot(fig)
     plt.close()
-
-
 
 
 
@@ -1360,17 +1326,3 @@ st.markdown("""
     Loi Log-Normale acceptée (p-value KS = 0.605)</small>
 </div>
 """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
