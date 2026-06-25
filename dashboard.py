@@ -875,149 +875,117 @@ with tabs[4]:
         plt.close()
 
 # =============================================================================
-# TAB 5 : Stress Test
+# TAB 5 : PROBABILITÉS DE DÉPASSEMENT (NOUVEAU)
+# =============================================================================
+with tabs[4]:
+    st.markdown('<div class="sec-title"> Probabilités de dépassement d\'un seuil</div>', unsafe_allow_html=True)
+
+    st.markdown(f"""
+    À partir de la loi Log-Normale identifiée pour \(I(t)\) :
+    
+    - μ = {MU:.4f}
+    - σ = {SIGMA:.4f}
+    
+    La probabilité de dépasser un seuil S est donnée par :
+    
+    **P(I > S) = 1 - F(S)**
+    
+    où F est la fonction de répartition de la loi Log-Normale.
+    """)
+
+    # Tableau des probabilités de dépassement
+    seuils = [1509, 3973, 9499, 16004, 30000, 42577]
+    seuils_labels = ["1 509", "3 973", "9 499", "16 004", "30 000", "42 577"]
+    probas = [1 - stats.lognorm.cdf(s, s=SIGMA, scale=np.exp(MU)) for s in seuils]
+    interpretations = [
+        "50% — Une semaine sur deux",
+        "25% — Une semaine sur quatre",
+        "10% — Une semaine sur dix",
+        "5% — Une semaine sur vingt",
+        "1,7% — Une semaine sur soixante",
+        "1% — Une semaine sur cent"
+    ]
+
+    df_probas = pd.DataFrame({
+        "Seuil I(t)": seuils_labels,
+        "Probabilité de dépassement": [f"{p:.1%}" for p in probas],
+        "Interprétation": interpretations
+    })
+    st.dataframe(df_probas, hide_index=True, use_container_width=True)
+
+    # Courbe de survie
+    fig, ax = dark_fig(figsize=(10, 5))
+    x_range = np.linspace(0, 80000, 500)
+    survie = 1 - stats.lognorm.cdf(x_range, s=SIGMA, scale=np.exp(MU))
+    ax.plot(x_range, survie, '-', color='#00c9a7', lw=2.5, label='P(I(t) > seuil)')
+    ax.fill_between(x_range, survie, 0, alpha=0.15, color='#00c9a7')
+
+    for seuil, proba in zip(seuils, probas):
+        ax.axvline(seuil, color='#e63946', ls='--', lw=1.2, alpha=0.6)
+        ax.axhline(proba, color='#e63946', ls='--', lw=1.2, alpha=0.6)
+        ax.plot(seuil, proba, 'o', color='#f4a261', ms=6, label=f"{seuil:.0f} → {proba:.1%}")
+
+    ax.set_xlabel("I(t) / 100k habitants", fontsize=12)
+    ax.set_ylabel("P(I(t) > seuil)", fontsize=12)
+    ax.set_title("Courbe de survie — Probabilité de dépassement", fontsize=14)
+    ax.legend(loc='upper right', fontsize=9)
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close()
+
+    st.info("""
+     Interprétation : 
+    - La probabilité que I(t) dépasse 30 000 est de 1,7% (1 semaine sur 60).
+    - La probabilité que I(t) dépasse 16 004 est de 5% (1 semaine sur 20).
+    - Ces calculs sont directement issus de la distribution Log-Normale calibrée sur les données.
+    """) 
+# =============================================================================
+# TAB 6 : SEUILS D'ALERTE (SIMPLIFIÉ)
 # =============================================================================
 with tabs[5]:
-    st.markdown('<div class="sec-title"> Stress Test — Scénarios de crise</div>', unsafe_allow_html=True)
-
-    scenarios_stress = {
-        "Scénario de base": (1.0, "#2a9d8f"),
-        "Épidémie modérée (×1.5)": (1.5, "#457b9d"),
-        "Épidémie forte (×2)": (2.0, "#f4a261"),
-        "Crise majeure (×3)": (3.0, "#e88c0a"),
-        "Catastrophe (×5)": (5.0, "#e63946"),
-        "Extrême (×10)": (10.0, "#7f0000"),
-    }
-
-    rows = []
-    for nom, (f, _) in scenarios_stress.items():
-        r = 1 - stats.lognorm.cdf(capacite, s=SIGMA, scale=np.exp(MU) * f)
-        r_rel = r / risque_dynamique(capacite, 1.0) if risque_dynamique(capacite, 1.0) > 0 else float('inf')
-        q50 = stats.lognorm.ppf(0.50, s=SIGMA, scale=np.exp(MU) * f)
-        q95 = stats.lognorm.ppf(0.95, s=SIGMA, scale=np.exp(MU) * f)
-        rows.append({
-            "Scénario": nom,
-            "Facteur": f"×{f}",
-            f"Risque (cap={capacite:,})": f"{r:.2%}",
-            "Risque relatif": f"×{r_rel:.1f}",
-            "Médiane I(t)": f"{q50:.0f}",
-            "Q95 I(t)": f"{q95:.0f}"
-        })
-
-    st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        fig, ax = dark_fig(figsize=(7, 5))
-        noms = [r["Scénario"] for r in rows]
-        risques = [float(r[f"Risque (cap={capacite:,})"].strip('%')) / 100 for r in rows]
-        couleurs = [v[1] for v in scenarios_stress.values()]
-        bars = ax.barh(noms, risques, color=couleurs, edgecolor='#334155', height=0.55)
-        for bar, r_ in zip(bars, risques):
-            ax.text(bar.get_width() + 0.005, bar.get_y() + bar.get_height() / 2,
-                    f"{r_:.1%}", va='center', fontsize=9)
-        ax.axvline(0.05, color='#f4a261', ls=':', lw=1.5, alpha=0.7, label='Risque 5%')
-        ax.axvline(0.10, color='#e63946', ls=':', lw=1.5, alpha=0.7, label='Risque 10%')
-        ax.set_xlabel("Probabilité de saturation")
-        ax.set_title(f"Risque par scénario (capacité = {capacite:,})", fontsize=10)
-        ax.legend(fontsize=8)
-        ax.grid(True, axis='x')
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
-
-    with col2:
-        st.markdown(" Heatmap du risque")
-        caps_hm = [20000, 30000, 40000, 50000, 60000]
-        facteurs_hm = [1.0, 1.5, 2.0, 3.0, 5.0, 10.0]
-        mat = []
-        for f in facteurs_hm:
-            row_hm = [1 - stats.lognorm.cdf(c, s=SIGMA, scale=np.exp(MU) * f) for c in caps_hm]
-            mat.append(row_hm)
-
-        fig, ax = dark_fig(figsize=(7, 5))
-        im = ax.imshow(mat, aspect='auto', cmap='RdYlGn_r', vmin=0, vmax=0.5)
-        ax.set_xticks(range(len(caps_hm)))
-        ax.set_xticklabels([f"{c//1000}k" for c in caps_hm], fontsize=8)
-        ax.set_yticks(range(len(facteurs_hm)))
-        ax.set_yticklabels([f"×{f}" for f in facteurs_hm], fontsize=8)
-        ax.set_xlabel("Capacité (lits)")
-        ax.set_ylabel("Facteur de crise")
-        ax.set_title("Heatmap probabilité de saturation", fontsize=10)
-        for i in range(len(facteurs_hm)):
-            for j in range(len(caps_hm)):
-                ax.text(j, i, f"{mat[i][j]:.0%}", ha='center', va='center',
-                        fontsize=8, color='white' if mat[i][j] > 0.25 else 'black')
-        plt.colorbar(im, ax=ax, label='Probabilité')
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
-
-# =============================================================================
-# TAB 6 : Seuils d'alerte
-# =============================================================================
-with tabs[6]:
-    st.markdown('<div class="sec-title"> Seuils d\'alerte opérationnels</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec-title">🚦 Seuils d\'alerte opérationnels</div>', unsafe_allow_html=True)
 
     seuils_dict = {
-        "🟢 Vigilance": (S75, "Surveillance normale", "#2a9d8f"),
-        "🟡 Pré-alerte": (S90, "Renforcement équipes", "#f4a261"),
-        "🔴 Alerte": (S95, "Plan Blanc", "#e63946"),
-        "⚫ Crise": (S99, "Cellule crise", "#888")
+        "🟢 Vigilance": (S75, "Surveillance normale", "#2a9d8f", "25% des semaines"),
+        "🟡 Pré-alerte": (S90, "Surveillance renforcée", "#f4a261", "10% des semaines"),
+        "🔴 Alerte": (S95, "Préparer les renforts", "#e63946", "5% des semaines"),
+        "⚫ Crise": (S99, "Déclencher le plan blanc", "#888", "1% des semaines")
     }
 
     cols_seuils = st.columns(4)
-    for idx, (nom, (seuil, usage, clr)) in enumerate(seuils_dict.items()):
+    for idx, (nom, (seuil, usage, clr, freq)) in enumerate(seuils_dict.items()):
         with cols_seuils[idx]:
             st.markdown(f"""
             <div class="kpi-card" style="border-color:{clr}40">
                 <span class="kpi-val" style="color:{clr}">{seuil:.0f}</span>
                 <div class="kpi-lbl">{nom}</div>
                 <div class="kpi-sub">{usage}</div>
+                <div class="kpi-sub" style="font-size:0.55rem; color:#8892b0;">{freq}</div>
             </div>""", unsafe_allow_html=True)
 
     if df_res is not None and COL_I:
         n = len(I_all)
-        col1, col2 = st.columns(2)
+        verif_rows = []
+        for nom, (seuil, usage, clr, freq) in seuils_dict.items():
+            nb = int(np.sum(I_all > seuil))
+            verif_rows.append({
+                "Niveau": nom,
+                "Seuil": f"{seuil:.0f}",
+                "Observé": f"{nb}/{n}",
+                "Fréquence réelle": f"{nb/n:.1%}",
+                "Fréquence théorique": freq
+            })
+        st.dataframe(pd.DataFrame(verif_rows), hide_index=True, use_container_width=True)
 
-        with col1:
-            st.markdown(" Vérification sur données réelles")
-            verif_rows = []
-            for nom, (seuil, usage, clr) in seuils_dict.items():
-                nb = int(np.sum(I_all > seuil))
-                verif_rows.append({
-                    "Niveau": nom,
-                    "Seuil": f"{seuil:.0f}",
-                    "Observé": f"{nb}/{n}",
-                    "Fréq. réelle": f"{nb/n:.1%}"
-                })
-            st.dataframe(pd.DataFrame(verif_rows), hide_index=True, use_container_width=True)
-
-        with col2:
-            st.markdown(" Chronologie des dépassements")
-            fig, ax = dark_fig(figsize=(7, 4))
-            ax.plot(df_res['date'], I_all, '-', color='#a8dadc', lw=1.2, alpha=0.8, label='I(t)')
-            for nom, (seuil, usage, clr) in seuils_dict.items():
-                ax.axhline(seuil, color=clr, ls='--', lw=1.5, label=f"{nom} ({seuil:.0f})", alpha=0.85)
-            ax.set_ylabel("I(t) / 100k")
-            ax.set_title("Historique vs seuils d'alerte", fontsize=10)
-            ax.legend(fontsize=7)
-            ax.grid(True)
-            plt.xticks(rotation=30)
-            plt.tight_layout()
-            st.pyplot(fig)
-            plt.close()
-
+        # Situation actuelle
         st.markdown(f"""
         <div style="background:rgba(17,34,64,.8); border:1px solid {niv_col}55;
                     border-radius:8px; padding:.8rem; margin-top:.8rem; text-align:center;">
             <span style="font-size:1.1rem; color:{niv_col}; font-weight:700;">
-                 Situation actuelle : I(t) = {I_cur:.0f} → {niv_txt}
+                  Situation actuelle : I(t) = {I_cur:.0f} → {niv_txt}
             </span>
         </div>""", unsafe_allow_html=True)
-    else:
-        st.warning(" Chargez `resultats_sirs_.csv` pour la vérification.")
 
 # =============================================================================
 # TAB 7 : What if (sans Météo)
