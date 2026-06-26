@@ -402,8 +402,53 @@ st.markdown("---")
 
 
 
+# =============================================================================
+# KPI DE SYNTHÈSE (À METTRE APRÈS "st.markdown("---")" DU TITRE)
+# =============================================================================
+st.markdown("###  Synthèse en direct")
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric(" I(t) actuel", f"{I_cur:.0f}", "/ 100k")
+
+with col2:
+    st.metric("⚠️ Niveau d'alerte", niv_txt)
+
+with col3:
+    st.metric(" Seuil critique", f"{seuil:,}", "/ 100k")
+
+with col4:
+    st.metric(" Facteur crise", f"×{facteur:.1f}")
+
+if df_res is not None and COL_I and len(I_all) >= 2:
+    last_week = I_all[-2]
+    delta = ((I_cur - last_week) / last_week * 100) if last_week > 0 else 0
+    st.caption(f" Variation sur 7 jours : {delta:+.1f}%")
+
+st.markdown("---")
 
 
+
+
+
+
+
+
+
+
+# =============================================================================
+# ALERTE (À METTRE APRÈS LES KPI, AVANT LES ONGLETS)
+# =============================================================================
+if I_cur > seuil:
+    st.warning(f"⚠️ I(t) = {I_cur:.0f} dépasse le seuil critique de {seuil:.0f} !")
+elif I_cur > S95:
+    st.warning(f"🔴 I(t) = {I_cur:.0f} : Niveau d'alerte rouge !")
+elif I_cur > S90:
+    st.warning(f"🟠 I(t) = {I_cur:.0f} : Niveau de pré-alerte.")
+else:
+    st.success(f"🟢 I(t) = {I_cur:.0f} : Situation stable.")
+    
 
 
 
@@ -655,8 +700,8 @@ with tabs[1]:
         "Modèle SIR": ["Définitive", " Non", "0,45", "1 659", "3 (α, β, γ)"],
         "Modèle SIRS": ["Temporaire (19 mois)", " Oui", "0,70", "1 956", "5 (α, β₀, β₁, γ, δ)"]
     })
-    st.dataframe(df_compare, hide_index=True, use_container_width=True)
-    
+    #st.dataframe(df_compare, hide_index=True, use_container_width=True)
+    st.dataframe(df_compare.fillna('N/A'), hide_index=True, use_container_width=True)
     # Conclusion
     st.success("""
     Conclusion : Le modèle SIR est utile comme point de départ, mais le modèle SIRS est plus adapté 
@@ -1221,6 +1266,11 @@ with tabs[8]:
     - R₀ ∈ [5.02 ; 7.84] → cohérent avec la littérature COVID-19
     """)
 
+
+
+
+
+
 # =============================================================================
 # TAB 9 : Données brutes
 # =============================================================================
@@ -1266,6 +1316,8 @@ with tabs[9]:
             "text/csv"
         )
         
+        
+
         
 # =============================================================================
 # TAB 10 : À PROPOS
