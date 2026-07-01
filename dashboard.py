@@ -413,7 +413,7 @@ with col1:
     st.metric(" I(t) actuel", f"{I_cur:.0f}", "/ 100k")
 
 with col2:
-    st.metric("⚠️ Niveau d'alerte", niv_txt)
+    st.metric(" Niveau d'alerte", niv_txt)
 
 with col3:
     st.metric(" Seuil critique", f"{seuil:,}", "/ 100k")
@@ -441,7 +441,7 @@ st.markdown("---")
 # ALERTE (À METTRE APRÈS LES KPI, AVANT LES ONGLETS)
 # =============================================================================
 if I_cur > seuil:
-    st.warning(f"⚠️ I(t) = {I_cur:.0f} dépasse le seuil critique de {seuil:.0f} !")
+    st.warning(f" I(t) = {I_cur:.0f} dépasse le seuil critique de {seuil:.0f} !")
 elif I_cur > S95:
     st.warning(f"🔴 I(t) = {I_cur:.0f} : Niveau d'alerte rouge !")
 elif I_cur > S90:
@@ -919,7 +919,7 @@ with tabs[4]:
     plt.close()
 
     st.info("""
-    🔍 **Interprétation** : 
+     **Interprétation** : 
     - La probabilité que I(t) dépasse 30 000 est de 1,7% (1 semaine sur 60).
     - La probabilité que I(t) dépasse 16 004 est de 5% (1 semaine sur 20).
     - Ces calculs sont directement issus de la distribution Log-Normale calibrée sur les données.
@@ -929,7 +929,7 @@ with tabs[4]:
 # TAB 5 : SEUILS D'ALERTE (SIMPLIFIÉ)
 # =============================================================================
 with tabs[5]:
-    st.markdown('<div class="sec-title">🚦 Seuils d\'alerte opérationnels</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec-title"> Seuils d\'alerte opérationnels</div>', unsafe_allow_html=True)
 
     seuils_dict = {
         "🟢 Vigilance": (S75, "Surveillance normale", "#2a9d8f", "25% des semaines"),
